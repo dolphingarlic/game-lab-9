@@ -203,8 +203,11 @@ class Game:
                     self.nxt_keeper_variant = None
                     self.awaiting_aim_dir = True
             elif self.awaiting_aim_dir and mouse != self.keepers[-1].loc: # Third **valid** click
-                v_mag = sum((mouse[i] - self.keepers[-1].loc[i]) ** 2 for i in range(2)) ** .5
-                self.keepers[-1].aim_dir = tuple((mouse[i] - self.keepers[-1].loc[i]) / v_mag for i in range(2))
+                mouse_x, mouse_y = mouse
+                keeper_x, keeper_y = self.keepers[-1].loc
+                dx, dy = mouse_x - keeper_x, mouse_y - keeper_y
+                v_mag = (dx ** 2 + dy ** 2) ** .5
+                self.keepers[-1].aim_dir = (dx / v_mag, dy / v_mag)
                 self.awaiting_aim_dir = False
 
     def timestep(self, mouse=None):
@@ -234,20 +237,20 @@ class Game:
             if not (0 <= a.loc[0] <= self.width and 0 <= a.loc[1] <= self.height):
                 to_remove.append(a)
         self.num_allowed_remaining -= len(to_remove)
-        self.animals = list(filter(lambda a: a not in to_remove, self.animals))
+        self.animals = [a for a in self.animals if a not in to_remove]
         # Move food and remove those outside the grid
         to_remove = []
         for f in self.food:
             f.loc = tuple(f.loc[i] + f.velocity[i] for i in range(2))
             if not (0 <= f.loc[0] <= self.width and 0 <= f.loc[1] <= self.height):
                 to_remove.append(f)
-        self.food = list(filter(lambda f: f not in to_remove, self.food))
+        self.food = [f for f in self.food if f not in to_remove]
 
         # Handle food-animal collisions
-        animals_fed = list(filter(lambda a: any(a.intersects(f) for f in self.food), self.animals))
-        food_eaten = list(filter(lambda f: any(f.intersects(a) for a in self.animals), self.food))
-        self.animals = list(filter(lambda a: a not in animals_fed, self.animals))
-        self.food = list(filter(lambda f: f not in food_eaten, self.food))
+        animals_fed = [a for a in self.animals if any(a.intersects(f) for f in self.food)]
+        food_eaten = [f for f in self.food if any(f.intersects(a) for a in self.animals)]
+        self.animals = [a for a in self.animals if a not in animals_fed]
+        self.food = [f for f in self.food if f not in food_eaten]
 
         # Throw new food if possible
         for k in self.keepers:
